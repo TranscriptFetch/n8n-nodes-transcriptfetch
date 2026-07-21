@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-transcriptfetch",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "n8n community node for TranscriptFetch - video transcripts from YouTube, TikTok, Instagram, X & Facebook, plus any web page as clean Markdown.",
   "keywords": [
     "n8n-community-node-package",
