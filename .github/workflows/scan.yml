@@ -1,0 +1,15 @@
+# On-demand run of n8n's community-package scanner against the published npm
+# package - the same check n8n runs during verification review.
+name: n8n package scan
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx --yes @n8n/scan-community-package n8n-nodes-transcriptfetch
