@@ -1,0 +1,54 @@
+{
+  "name": "n8n-nodes-transcriptfetch",
+  "version": "0.1.0",
+  "description": "n8n community node for TranscriptFetch - video transcripts from YouTube, TikTok, Instagram, X & Facebook, plus any web page as clean Markdown.",
+  "keywords": [
+    "n8n-community-node-package",
+    "transcript",
+    "youtube",
+    "tiktok",
+    "instagram",
+    "captions",
+    "markdown",
+    "scraping",
+    "transcriptfetch"
+  ],
+  "license": "MIT",
+  "homepage": "https://transcriptfetch.com",
+  "author": {
+    "name": "TranscriptFetch",
+    "email": "support@transcriptfetch.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TranscriptFetch/n8n-nodes-transcriptfetch.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').cpSync('nodes/TranscriptFetch/transcriptfetch.svg','dist/nodes/TranscriptFetch/transcriptfetch.svg')\"",
+    "dev": "tsc --watch",
+    "lint": "npx @n8n/scan-community-package ."
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/TranscriptFetchApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/TranscriptFetch/TranscriptFetch.node.js"
+    ]
+  },
+  "devDependencies": {
+    "n8n-workflow": "*",
+    "typescript": "^5.5.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}
