@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-transcriptfetch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "n8n community node for TranscriptFetch - video transcripts from YouTube, TikTok, Instagram, X & Facebook, plus any web page as clean Markdown.",
   "keywords": [
     "n8n-community-node-package",
@@ -28,7 +28,7 @@
   },
   "main": "index.js",
   "scripts": {
-    "build": "tsc && node -e \"require('fs').cpSync('nodes/TranscriptFetch/transcriptfetch.svg','dist/nodes/TranscriptFetch/transcriptfetch.svg')\"",
+    "build": "tsc && node -e \"const {cpSync}=require('fs');for(const f of ['transcriptfetch.svg','transcriptfetch.dark.svg']){cpSync('nodes/TranscriptFetch/'+f,'dist/nodes/TranscriptFetch/'+f);cpSync('nodes/TranscriptFetch/'+f,'dist/credentials/'+f);}\"",
     "dev": "tsc --watch",
     "lint": "npx @n8n/scan-community-package ."
   },

@@ -4,7 +4,7 @@ export class TranscriptFetch implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TranscriptFetch',
 		name: 'transcriptFetch',
-		icon: 'file:transcriptfetch.svg',
+		icon: { light: 'file:transcriptfetch.svg', dark: 'file:transcriptfetch.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
@@ -51,20 +51,20 @@ export class TranscriptFetch implements INodeType {
 				displayOptions: { show: { resource: ['transcript'] } },
 				options: [
 					{
-						name: 'Get Video Transcript',
-						value: 'getVideo',
-						action: 'Get a video transcript',
-						description:
-							'Fetch the transcript for a YouTube, TikTok, Instagram, X (Twitter), or Facebook video (text + timestamped segments)',
-						routing: { request: { method: 'POST', url: '/api/v1/transcripts/video' } },
-					},
-					{
 						name: 'Get Transcripts (Batch)',
 						value: 'batch',
 						action: 'Get up to 50 transcripts in one call',
 						description:
 							'Fetch transcripts for up to 50 YouTube video IDs or URLs concurrently',
 						routing: { request: { method: 'POST', url: '/api/v1/transcripts/batch' } },
+					},
+					{
+						name: 'Get Video Transcript',
+						value: 'getVideo',
+						action: 'Get a video transcript',
+						description:
+							'Fetch the transcript for a YouTube, TikTok, Instagram, X (Twitter), or Facebook video (text + timestamped segments)',
+						routing: { request: { method: 'POST', url: '/api/v1/transcripts/video' } },
 					},
 					{
 						name: 'List Channel Videos',
@@ -100,12 +100,12 @@ export class TranscriptFetch implements INodeType {
 				displayOptions: { show: { resource: ['web'] } },
 				options: [
 					{
-						name: 'Scrape Page to Markdown',
-						value: 'scrape',
-						action: 'Scrape a web page to markdown',
+						name: 'Crawl Site to Markdown',
+						value: 'crawl',
+						action: 'Crawl a site to markdown',
 						description:
-							'Fetch any http(s) URL and return the main readable content as clean Markdown',
-						routing: { request: { method: 'POST', url: '/api/v1/web' } },
+							'Breadth-first crawl from a start URL, returning clean Markdown for every readable page (up to 25 per call)',
+						routing: { request: { method: 'POST', url: '/api/v1/web/crawl' } },
 					},
 					{
 						name: 'Map Site Links',
@@ -115,12 +115,12 @@ export class TranscriptFetch implements INodeType {
 						routing: { request: { method: 'POST', url: '/api/v1/web/map' } },
 					},
 					{
-						name: 'Crawl Site to Markdown',
-						value: 'crawl',
-						action: 'Crawl a site to markdown',
+						name: 'Scrape Page to Markdown',
+						value: 'scrape',
+						action: 'Scrape a web page to markdown',
 						description:
-							'Breadth-first crawl from a start URL, returning clean Markdown for every readable page (up to 25 per call)',
-						routing: { request: { method: 'POST', url: '/api/v1/web/crawl' } },
+							'Fetch any http(s) URL and return the main readable content as clean Markdown',
+						routing: { request: { method: 'POST', url: '/api/v1/web' } },
 					},
 				],
 				default: 'scrape',
@@ -195,7 +195,7 @@ export class TranscriptFetch implements INodeType {
 				name: 'limit',
 				type: 'number',
 				typeOptions: { minValue: 1 },
-				default: 10,
+				default: 50,
 				description: 'Max number of results to return',
 				displayOptions: {
 					show: { resource: ['transcript'], operation: ['channel', 'playlist', 'search'] },
@@ -220,8 +220,8 @@ export class TranscriptFetch implements INodeType {
 				name: 'limit',
 				type: 'number',
 				typeOptions: { minValue: 1 },
-				default: 10,
-				description: 'Max number of links (map) or pages (crawl) to return',
+				default: 50,
+				description: 'Max number of results to return',
 				displayOptions: { show: { resource: ['web'], operation: ['map', 'crawl'] } },
 				routing: { send: { type: 'body', property: 'limit' } },
 			},

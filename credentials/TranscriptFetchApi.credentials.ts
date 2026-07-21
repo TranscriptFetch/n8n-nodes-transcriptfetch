@@ -2,6 +2,7 @@ import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
+	Icon,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -9,6 +10,8 @@ export class TranscriptFetchApi implements ICredentialType {
 	name = 'transcriptFetchApi';
 
 	displayName = 'TranscriptFetch API';
+
+	icon: Icon = { light: 'file:transcriptfetch.svg', dark: 'file:transcriptfetch.dark.svg' };
 
 	documentationUrl = 'https://transcriptfetch.com/docs';
 
