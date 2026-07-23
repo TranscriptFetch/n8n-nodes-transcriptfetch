@@ -39,7 +39,9 @@ export class TranscriptFetchApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://transcriptfetch.com',
-			url: '/api/v1/health',
+			// Free authenticated endpoint: validates the key and returns the
+			// account's credit balance, so a wrong key genuinely fails the test.
+			url: '/api/v1/me',
 		},
 	};
 }
