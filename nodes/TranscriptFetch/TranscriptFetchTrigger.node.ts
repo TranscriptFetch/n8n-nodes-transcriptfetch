@@ -112,12 +112,19 @@ export class TranscriptFetchTrigger implements INodeType {
 		const maxVideos = this.getNodeParameter('maxVideos') as number;
 		const includeTranscript = this.getNodeParameter('includeTranscript') as boolean;
 
+		// "Test step" in the editor. Following the watermark here would be
+		// correct but useless: the first test would report the cold start and
+		// every later one would find nothing new, so the editor would only ever
+		// show "no data" and you'd have nothing to build downstream nodes against.
+		const isTestRun = this.getMode() === 'manual';
+
 		const staticData = this.getWorkflowStaticData('node');
 		const lastVideoId = staticData.lastVideoId as string | undefined;
 		const seen = (staticData.seenVideoIds as string[] | undefined) ?? [];
 
-		const body: IDataObject = { channel, limit: maxVideos };
-		if (lastVideoId) body.since_video_id = lastVideoId;
+		// A test only needs one sample; a real poll needs the whole window.
+		const body: IDataObject = { channel, limit: isTestRun ? 1 : maxVideos };
+		if (lastVideoId && !isTestRun) body.since_video_id = lastVideoId;
 
 		const listed = (await this.helpers.httpRequestWithAuthentication.call(
 			this,
@@ -134,6 +141,14 @@ export class TranscriptFetchTrigger implements INodeType {
 		const videos = (listed?.data?.videos ?? []).filter(
 			(v): v is VideoListItem & { videoId: string } => typeof v.videoId === 'string',
 		);
+
+		// Emit the newest upload as a sample. The watermark is deliberately left
+		// untouched, so activating the workflow afterwards still starts clean
+		// rather than treating this video as already delivered.
+		if (isTestRun) {
+			if (videos.length === 0) return null;
+			return [[await buildItem.call(this, videos[0], includeTranscript)]];
+		}
 
 		// First activation: record where the channel stands today and emit nothing,
 		// so switching the workflow on doesn't replay the entire back catalogue.
@@ -156,23 +171,7 @@ export class TranscriptFetchTrigger implements INodeType {
 		const items: INodeExecutionData[] = [];
 		// Oldest first, so downstream nodes see uploads in the order they happened.
 		for (const video of [...fresh].reverse()) {
-			const json: IDataObject = {
-				videoId: video.videoId,
-				title: video.title ?? null,
-				url: `https://www.youtube.com/watch?v=${video.videoId}`,
-				thumbnailUrl: video.thumbnailUrl ?? null,
-				duration: video.duration ?? null,
-				channel: video.channel ?? null,
-				transcriptStatus: 'skipped',
-				text: null,
-				segments: null,
-			};
-
-			if (includeTranscript) {
-				Object.assign(json, await fetchTranscript.call(this, video.videoId));
-			}
-
-			items.push({ json });
+			items.push(await buildItem.call(this, video, includeTranscript));
 		}
 
 		staticData.lastVideoId = newestId;
@@ -180,6 +179,31 @@ export class TranscriptFetchTrigger implements INodeType {
 
 		return [items];
 	}
+}
+
+/** Shape one listed video into an output item, with its transcript if asked for. */
+async function buildItem(
+	this: IPollFunctions,
+	video: VideoListItem & { videoId: string },
+	includeTranscript: boolean,
+): Promise<INodeExecutionData> {
+	const json: IDataObject = {
+		videoId: video.videoId,
+		title: video.title ?? null,
+		url: `https://www.youtube.com/watch?v=${video.videoId}`,
+		thumbnailUrl: video.thumbnailUrl ?? null,
+		duration: video.duration ?? null,
+		channel: video.channel ?? null,
+		transcriptStatus: 'skipped',
+		text: null,
+		segments: null,
+	};
+
+	if (includeTranscript) {
+		Object.assign(json, await fetchTranscript.call(this, video.videoId));
+	}
+
+	return { json };
 }
 
 /**

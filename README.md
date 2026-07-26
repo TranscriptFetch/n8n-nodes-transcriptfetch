@@ -28,6 +28,8 @@ Billing is usage-based: 1 credit per successful response. Failed, blocked, or no
 
 When the workflow is first activated the trigger records where the channel stands and emits nothing, so turning it on doesn't replay the entire back catalogue. That one baseline poll costs 1 credit; every quiet poll after it is free. New videos are emitted oldest-first.
 
+**Test step** returns the channel's latest video so you have real data to build downstream nodes against, without waiting for an upload. It leaves the watermark alone, so activating the workflow afterwards still starts clean.
+
 Each item carries the video metadata plus a `transcriptStatus`:
 
 | `transcriptStatus` | Meaning |
