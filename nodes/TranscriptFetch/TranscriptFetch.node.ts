@@ -53,7 +53,7 @@ export class TranscriptFetch implements INodeType {
 					{
 						name: 'Get Transcripts (Batch)',
 						value: 'batch',
-						action: 'Get up to 50 transcripts in one call',
+						action: 'Get many video transcripts',
 						description:
 							'Fetch transcripts for up to 50 YouTube video IDs or URLs concurrently',
 						routing: { request: { method: 'POST', url: '/api/v1/transcripts/batch' } },
@@ -61,7 +61,7 @@ export class TranscriptFetch implements INodeType {
 					{
 						name: 'Get Video Transcript',
 						value: 'getVideo',
-						action: 'Get a video transcript',
+						action: 'Get video transcript',
 						description:
 							'Fetch the transcript for a YouTube, TikTok, Instagram, X (Twitter), or Facebook video (text + timestamped segments)',
 						routing: { request: { method: 'POST', url: '/api/v1/transcripts/video' } },
@@ -69,21 +69,21 @@ export class TranscriptFetch implements INodeType {
 					{
 						name: 'List Channel Videos',
 						value: 'channel',
-						action: 'List a channel s videos',
+						action: 'List channel videos',
 						description: 'Resolve a YouTube channel into a list of videos (metadata only)',
 						routing: { request: { method: 'POST', url: '/api/v1/transcripts/channel' } },
 					},
 					{
 						name: 'List Playlist Videos',
 						value: 'playlist',
-						action: 'List a playlist s videos',
+						action: 'List playlist videos',
 						description: 'Resolve a YouTube playlist into a list of videos (metadata only)',
 						routing: { request: { method: 'POST', url: '/api/v1/transcripts/playlist' } },
 					},
 					{
 						name: 'Search Videos',
 						value: 'search',
-						action: 'Search you tube for videos',
+						action: 'Search videos',
 						description: 'Resolve a keyword search into a list of videos (metadata only)',
 						routing: { request: { method: 'POST', url: '/api/v1/transcripts/search' } },
 					},
@@ -102,7 +102,7 @@ export class TranscriptFetch implements INodeType {
 					{
 						name: 'Crawl Site to Markdown',
 						value: 'crawl',
-						action: 'Crawl a site to markdown',
+						action: 'Crawl site to markdown',
 						description:
 							'Breadth-first crawl from a start URL, returning clean Markdown for every readable page (up to 25 per call)',
 						routing: { request: { method: 'POST', url: '/api/v1/web/crawl' } },
@@ -110,14 +110,14 @@ export class TranscriptFetch implements INodeType {
 					{
 						name: 'Map Site Links',
 						value: 'map',
-						action: 'Map a site s links',
+						action: 'Map site links',
 						description: 'List the same-site links reachable from a URL',
 						routing: { request: { method: 'POST', url: '/api/v1/web/map' } },
 					},
 					{
 						name: 'Scrape Page to Markdown',
 						value: 'scrape',
-						action: 'Scrape a web page to markdown',
+						action: 'Scrape web page to markdown',
 						description:
 							'Fetch any http(s) URL and return the main readable content as clean Markdown',
 						routing: { request: { method: 'POST', url: '/api/v1/web' } },
@@ -133,7 +133,7 @@ export class TranscriptFetch implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				placeholder: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+				placeholder: 'e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ',
 				description:
 					'YouTube, TikTok, Instagram, X (Twitter), or Facebook video URL - or a bare YouTube video ID',
 				displayOptions: { show: { resource: ['transcript'], operation: ['getVideo'] } },
@@ -145,7 +145,7 @@ export class TranscriptFetch implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				placeholder: 'dQw4w9WgXcQ, 9bZkp7q19f0',
+				placeholder: 'e.g. dQw4w9WgXcQ, 9bZkp7q19f0',
 				description: 'Comma-separated list of up to 50 YouTube video IDs or URLs',
 				displayOptions: { show: { resource: ['transcript'], operation: ['batch'] } },
 				routing: {
@@ -163,7 +163,7 @@ export class TranscriptFetch implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				placeholder: '@lexfridman',
+				placeholder: 'e.g. @lexfridman',
 				description: 'Channel @handle, /channel/UC… URL, or UC… ID',
 				displayOptions: { show: { resource: ['transcript'], operation: ['channel'] } },
 				routing: { send: { type: 'body', property: 'channel' } },
@@ -174,7 +174,7 @@ export class TranscriptFetch implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				placeholder: 'PLrAXtmRdnEQy6nuLMt9H1aZIuhcGOcZQ4',
+				placeholder: 'e.g. PLrAXtmRdnEQy6nuLMt9H1aZIuhcGOcZQ4',
 				description: 'Playlist URL or playlist ID',
 				displayOptions: { show: { resource: ['transcript'], operation: ['playlist'] } },
 				routing: { send: { type: 'body', property: 'playlist' } },
@@ -185,7 +185,7 @@ export class TranscriptFetch implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				placeholder: 'how transformers work',
+				placeholder: 'e.g. how transformers work',
 				description: 'Keyword search query',
 				displayOptions: { show: { resource: ['transcript'], operation: ['search'] } },
 				routing: { send: { type: 'body', property: 'query' } },
@@ -194,7 +194,7 @@ export class TranscriptFetch implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
-				typeOptions: { minValue: 1 },
+				typeOptions: { minValue: 1, maxValue: 50 },
 				default: 50,
 				description: 'Max number of results to return',
 				displayOptions: {
@@ -210,7 +210,7 @@ export class TranscriptFetch implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				placeholder: 'https://example.com/article',
+				placeholder: 'e.g. https://example.com/article',
 				description: 'The http(s) URL to fetch',
 				displayOptions: { show: { resource: ['web'] } },
 				routing: { send: { type: 'body', property: 'url' } },
@@ -219,10 +219,25 @@ export class TranscriptFetch implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
-				typeOptions: { minValue: 1 },
+				typeOptions: { minValue: 1, maxValue: 500 },
 				default: 50,
 				description: 'Max number of results to return',
-				displayOptions: { show: { resource: ['web'], operation: ['map', 'crawl'] } },
+				displayOptions: { show: { resource: ['web'], operation: ['map'] } },
+				routing: { send: { type: 'body', property: 'limit' } },
+			},
+			{
+				// Deliberately NOT named `limit`: the linter requires any parameter
+				// called `limit` to default to 50, but the crawl endpoint accepts at
+				// most 25 pages per call (and bills a credit per page returned), so a
+				// default of 50 would fail validation on every first run. The request
+				// body still sends `limit`, which is what the API expects.
+				displayName: 'Max Pages',
+				name: 'maxPages',
+				type: 'number',
+				typeOptions: { minValue: 1, maxValue: 25 },
+				default: 10,
+				description: 'Max pages to crawl, up to 25 per call',
+				displayOptions: { show: { resource: ['web'], operation: ['crawl'] } },
 				routing: { send: { type: 'body', property: 'limit' } },
 			},
 		],
