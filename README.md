@@ -14,7 +14,7 @@ Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes
 
 Sign up at [transcriptfetch.com](https://transcriptfetch.com) and create an API key in the [dashboard](https://transcriptfetch.com/app). Add it as a **TranscriptFetch API** credential in n8n.
 
-Billing is usage-based: 1 credit per successful response. Failed, blocked, or no-transcript fetches are never charged.
+Billing is per-credit: a successful caption fetch costs 1 credit, failed or blocked fetches are never charged, and every account gets 100 free credits a month. Videos without captions are transcribed from audio automatically — short videos typically finish in about 30 seconds — and are billed once, on delivery of the finished transcript, at the audio-transcription rate (see [pricing](https://transcriptfetch.com/pricing)).
 
 ## Trigger
 
