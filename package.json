@@ -1,56 +1,57 @@
 {
-  "name": "n8n-nodes-transcriptfetch",
-  "version": "0.2.2",
-  "description": "n8n community node for TranscriptFetch - video transcripts from YouTube, TikTok, Instagram, X & Facebook, plus any web page as clean Markdown.",
-  "keywords": [
-    "n8n-community-node-package",
-    "transcript",
-    "youtube",
-    "tiktok",
-    "instagram",
-    "captions",
-    "markdown",
-    "scraping",
-    "transcriptfetch"
-  ],
-  "license": "MIT",
-  "homepage": "https://transcriptfetch.com",
-  "author": {
-    "name": "TranscriptFetch",
-    "email": "support@transcriptfetch.com"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/TranscriptFetch/n8n-nodes-transcriptfetch.git"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "main": "index.js",
-  "scripts": {
-    "build": "tsc && node -e \"const {cpSync}=require('fs');for(const f of ['transcriptfetch.svg','transcriptfetch.dark.svg']){cpSync('nodes/TranscriptFetch/'+f,'dist/nodes/TranscriptFetch/'+f);cpSync('nodes/TranscriptFetch/'+f,'dist/credentials/'+f);}\"",
-    "dev": "tsc --watch",
-    "lint": "npx @n8n/scan-community-package ."
-  },
-  "files": [
-    "dist"
-  ],
-  "n8n": {
-    "n8nNodesApiVersion": 1,
-    "credentials": [
-      "dist/credentials/TranscriptFetchApi.credentials.js"
-    ],
-    "nodes": [
-      "dist/nodes/TranscriptFetch/TranscriptFetch.node.js",
-      "dist/nodes/TranscriptFetch/TranscriptFetchTrigger.node.js"
-    ]
-  },
-  "devDependencies": {
-    "@n8n/node-cli": "^0.40.3",
-    "n8n-workflow": "*",
-    "typescript": "^5.5.0"
-  },
-  "peerDependencies": {
-    "n8n-workflow": "*"
-  }
+	"name": "n8n-nodes-transcriptfetch",
+	"version": "0.3.0",
+	"description": "n8n community node for TranscriptFetch: video transcripts from YouTube, TikTok and Instagram - captions in about a second, automatic AI speech-to-text when none exist - plus YouTube search, channel and playlist listing, and a new-video trigger.",
+	"keywords": [
+		"n8n-community-node-package",
+		"transcript",
+		"youtube",
+		"youtube-transcript",
+		"tiktok",
+		"instagram",
+		"captions",
+		"speech-to-text",
+		"transcription",
+		"transcriptfetch"
+	],
+	"license": "MIT",
+	"homepage": "https://transcriptfetch.com/docs",
+	"author": {
+		"name": "TranscriptFetch",
+		"email": "support@transcriptfetch.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/TranscriptFetch/n8n-nodes-transcriptfetch.git"
+	},
+	"engines": {
+		"node": ">=20"
+	},
+	"main": "index.js",
+	"scripts": {
+		"build": "tsc && node -e \"const {cpSync}=require('fs');for(const f of ['transcriptfetch.svg','transcriptfetch.dark.svg']){cpSync('nodes/TranscriptFetch/'+f,'dist/nodes/TranscriptFetch/'+f);cpSync('nodes/TranscriptFetch/'+f,'dist/credentials/'+f);}\"",
+		"dev": "tsc --watch",
+		"lint": "npx @n8n/scan-community-package ."
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"credentials": [
+			"dist/credentials/TranscriptFetchApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/TranscriptFetch/TranscriptFetch.node.js",
+			"dist/nodes/TranscriptFetch/TranscriptFetchTrigger.node.js"
+		]
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "^0.40.3",
+		"n8n-workflow": "*",
+		"typescript": "^5.5.0"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	}
 }

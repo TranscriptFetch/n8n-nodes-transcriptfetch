@@ -9,7 +9,7 @@ export class TranscriptFetch implements INodeType {
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		description:
-			'Video transcripts from YouTube, TikTok, Instagram, X & Facebook, plus any web page as clean Markdown',
+			'Video transcripts from YouTube, TikTok and Instagram, with automatic AI transcription when captions are missing',
 		defaults: {
 			name: 'TranscriptFetch',
 		},
@@ -35,10 +35,7 @@ export class TranscriptFetch implements INodeType {
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
-				options: [
-					{ name: 'Transcript', value: 'transcript' },
-					{ name: 'Web', value: 'web' },
-				],
+				options: [{ name: 'Transcript', value: 'transcript' }],
 				default: 'transcript',
 			},
 
@@ -92,39 +89,6 @@ export class TranscriptFetch implements INodeType {
 			},
 
 			// ── Web operations ────────────────────────────────────────────────
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				displayOptions: { show: { resource: ['web'] } },
-				options: [
-					{
-						name: 'Crawl Site to Markdown',
-						value: 'crawl',
-						action: 'Crawl site to markdown',
-						description:
-							'Breadth-first crawl from a start URL, returning clean Markdown for every readable page (up to 25 per call)',
-						routing: { request: { method: 'POST', url: '/api/v1/web/crawl' } },
-					},
-					{
-						name: 'Map Site Links',
-						value: 'map',
-						action: 'Map site links',
-						description: 'List the same-site links reachable from a URL',
-						routing: { request: { method: 'POST', url: '/api/v1/web/map' } },
-					},
-					{
-						name: 'Scrape Page to Markdown',
-						value: 'scrape',
-						action: 'Scrape web page to markdown',
-						description:
-							'Fetch any http(s) URL and return the main readable content as clean Markdown',
-						routing: { request: { method: 'POST', url: '/api/v1/web' } },
-					},
-				],
-				default: 'scrape',
-			},
 
 			// ── Transcript fields ─────────────────────────────────────────────
 			{
@@ -135,7 +99,7 @@ export class TranscriptFetch implements INodeType {
 				default: '',
 				placeholder: 'e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ',
 				description:
-					'YouTube, TikTok, Instagram, X (Twitter), or Facebook video URL - or a bare YouTube video ID',
+					'YouTube, TikTok, or Instagram video URL - or a bare YouTube video ID',
 				displayOptions: { show: { resource: ['transcript'], operation: ['getVideo'] } },
 				routing: { send: { type: 'body', property: 'video' } },
 			},
@@ -200,44 +164,6 @@ export class TranscriptFetch implements INodeType {
 				displayOptions: {
 					show: { resource: ['transcript'], operation: ['channel', 'playlist', 'search'] },
 				},
-				routing: { send: { type: 'body', property: 'limit' } },
-			},
-
-			// ── Web fields ────────────────────────────────────────────────────
-			{
-				displayName: 'URL',
-				name: 'url',
-				type: 'string',
-				required: true,
-				default: '',
-				placeholder: 'e.g. https://example.com/article',
-				description: 'The http(s) URL to fetch',
-				displayOptions: { show: { resource: ['web'] } },
-				routing: { send: { type: 'body', property: 'url' } },
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				typeOptions: { minValue: 1, maxValue: 500 },
-				default: 50,
-				description: 'Max number of results to return',
-				displayOptions: { show: { resource: ['web'], operation: ['map'] } },
-				routing: { send: { type: 'body', property: 'limit' } },
-			},
-			{
-				// Deliberately NOT named `limit`: the linter requires any parameter
-				// called `limit` to default to 50, but the crawl endpoint accepts at
-				// most 25 pages per call (and bills a credit per page returned), so a
-				// default of 50 would fail validation on every first run. The request
-				// body still sends `limit`, which is what the API expects.
-				displayName: 'Max Pages',
-				name: 'maxPages',
-				type: 'number',
-				typeOptions: { minValue: 1, maxValue: 25 },
-				default: 10,
-				description: 'Max pages to crawl, up to 25 per call',
-				displayOptions: { show: { resource: ['web'], operation: ['crawl'] } },
 				routing: { send: { type: 'body', property: 'limit' } },
 			},
 		],
