@@ -74,8 +74,10 @@ export class TranscriptFetchTrigger implements INodeType {
 		defaults: {
 			name: 'TranscriptFetch Trigger',
 		},
+		// No usableAsTool here: n8n's scanner (the verification check) rejects it
+		// on triggers, which cannot be invoked as AI tools. The older local lint
+		// rule that asked for it is superseded.
 		polling: true,
-		usableAsTool: true,
 		inputs: [],
 		outputs: ['main'] as NodeConnectionType[],
 		credentials: [

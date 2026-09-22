@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-transcriptfetch",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"description": "n8n community node for TranscriptFetch: video transcripts from YouTube, TikTok and Instagram - captions in about a second, automatic AI speech-to-text when none exist - plus YouTube search, channel and playlist listing, and a new-video trigger.",
 	"keywords": [
 		"n8n-community-node-package",
