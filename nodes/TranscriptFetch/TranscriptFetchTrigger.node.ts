@@ -18,15 +18,19 @@ const SEEN_LIMIT = 50;
 
 type VideoListItem = {
 	videoId?: string;
+	url?: string;
 	title?: string;
 	thumbnailUrl?: string;
 	duration?: number | null;
 	channel?: string | null;
+	publishedAt?: string | null;
 };
 
 type ChannelResponse = {
-	data?: { videos?: VideoListItem[] };
+	data?: { platform?: string; videos?: VideoListItem[] };
 };
+
+type Segment = { start?: number; duration?: number; text?: string };
 
 type TranscriptResponse = {
 	status?: string;
@@ -35,18 +39,22 @@ type TranscriptResponse = {
 	reason?: string;
 	data?: {
 		title?: string | null;
+		platform?: string | null;
+		source?: string | null;
 		text?: string | null;
-		segments?: unknown[] | null;
+		segments?: Segment[] | null;
 	};
 };
 
 /**
- * Polling trigger for new uploads on a YouTube channel.
+ * Polling trigger for new uploads on a YouTube channel, TikTok profile or
+ * Instagram account.
  *
  * n8n has no native YouTube trigger, so the usual workaround is an RSS Feed
  * Trigger plus a separate transcript service. This collapses both into one node:
  * it watches the channel and (by default) emits each new video with its
- * transcript already attached.
+ * transcript already attached. Since 0.4.0 it talks to the v2 API, so the same
+ * node watches TikTok and Instagram profiles too.
  *
  * Polling is free. The channel endpoint accepts a `since_video_id` watermark,
  * trims the page to whatever is newer, and charges nothing when there is nothing
@@ -61,11 +69,13 @@ export class TranscriptFetchTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{ "New video: " + $parameter["channel"] }}',
-		description: 'Starts a workflow when a YouTube channel publishes a new video',
+		description:
+			'Starts a workflow when a YouTube channel, TikTok profile or Instagram account publishes a new video',
 		defaults: {
 			name: 'TranscriptFetch Trigger',
 		},
 		polling: true,
+		usableAsTool: true,
 		inputs: [],
 		outputs: ['main'] as NodeConnectionType[],
 		credentials: [
@@ -82,7 +92,8 @@ export class TranscriptFetchTrigger implements INodeType {
 				required: true,
 				default: '',
 				placeholder: 'e.g. @lexfridman',
-				description: 'Channel @handle, /channel/UC… URL, or UC… ID to watch for new uploads',
+				description:
+					'YouTube channel @handle, /channel/UC… URL or UC… ID, a TikTok @profile or profile URL, or an Instagram account URL to watch for new uploads',
 			},
 			{
 				displayName: 'Include Transcript',
@@ -90,7 +101,7 @@ export class TranscriptFetchTrigger implements INodeType {
 				type: 'boolean',
 				default: true,
 				description:
-					'Whether to fetch the transcript for each new video and attach it to the output. Costs 1 credit per video; watching the channel is free',
+					'Whether to fetch the transcript for each new video and attach it to the output. A caption transcript costs 1 credit; audio transcription is charged per started minute on delivery. Watching the channel is free.',
 			},
 			{
 				// Deliberately NOT named `limit`: the community-package linter requires
@@ -102,7 +113,7 @@ export class TranscriptFetchTrigger implements INodeType {
 				typeOptions: { minValue: 1, maxValue: 50 },
 				default: 10,
 				description:
-					'How far back each poll looks. Raise it for channels that publish several videos between polls',
+					'How far back each poll looks. Raise it for channels that publish several videos between polls.',
 			},
 		],
 	};
@@ -132,12 +143,13 @@ export class TranscriptFetchTrigger implements INodeType {
 			{
 				method: 'POST',
 				baseURL: BASE_URL,
-				url: '/api/v1/transcripts/channel',
+				url: '/api/v2/transcripts/channel',
 				body,
 				json: true,
 			},
 		)) as ChannelResponse;
 
+		const platform = listed?.data?.platform ?? 'youtube';
 		const videos = (listed?.data?.videos ?? []).filter(
 			(v): v is VideoListItem & { videoId: string } => typeof v.videoId === 'string',
 		);
@@ -147,7 +159,7 @@ export class TranscriptFetchTrigger implements INodeType {
 		// rather than treating this video as already delivered.
 		if (isTestRun) {
 			if (videos.length === 0) return null;
-			return [[await buildItem.call(this, videos[0], includeTranscript)]];
+			return [[await buildItem.call(this, videos[0], platform, includeTranscript)]];
 		}
 
 		// First activation: record where the channel stands today and emit nothing,
@@ -171,7 +183,7 @@ export class TranscriptFetchTrigger implements INodeType {
 		const items: INodeExecutionData[] = [];
 		// Oldest first, so downstream nodes see uploads in the order they happened.
 		for (const video of [...fresh].reverse()) {
-			items.push(await buildItem.call(this, video, includeTranscript));
+			items.push(await buildItem.call(this, video, platform, includeTranscript));
 		}
 
 		staticData.lastVideoId = newestId;
@@ -185,22 +197,30 @@ export class TranscriptFetchTrigger implements INodeType {
 async function buildItem(
 	this: IPollFunctions,
 	video: VideoListItem & { videoId: string },
+	platform: string,
 	includeTranscript: boolean,
 ): Promise<INodeExecutionData> {
+	// v2 listings carry the platform's own URL. Only a YouTube ID can be turned
+	// into a URL by hand; 0.3.x did that for every platform and emitted
+	// youtube.com links for TikTok videos.
+	const url =
+		video.url ?? (platform === 'youtube' ? `https://www.youtube.com/watch?v=${video.videoId}` : null);
 	const json: IDataObject = {
 		videoId: video.videoId,
+		platform,
 		title: video.title ?? null,
-		url: `https://www.youtube.com/watch?v=${video.videoId}`,
+		url,
 		thumbnailUrl: video.thumbnailUrl ?? null,
 		duration: video.duration ?? null,
 		channel: video.channel ?? null,
+		publishedAt: video.publishedAt ?? null,
 		transcriptStatus: 'skipped',
 		text: null,
 		segments: null,
 	};
 
 	if (includeTranscript) {
-		Object.assign(json, await fetchTranscript.call(this, video.videoId));
+		Object.assign(json, await fetchTranscript.call(this, url ?? video.videoId));
 	}
 
 	return { json };
@@ -213,7 +233,7 @@ async function buildItem(
  * the batch (or silently drop the watermark advance), so failures come back as a
  * `transcriptStatus` the workflow can branch on.
  */
-async function fetchTranscript(this: IPollFunctions, videoId: string): Promise<IDataObject> {
+async function fetchTranscript(this: IPollFunctions, video: string): Promise<IDataObject> {
 	try {
 		const res = (await this.helpers.httpRequestWithAuthentication.call(
 			this,
@@ -221,8 +241,8 @@ async function fetchTranscript(this: IPollFunctions, videoId: string): Promise<I
 			{
 				method: 'POST',
 				baseURL: BASE_URL,
-				url: '/api/v1/transcripts/video',
-				body: { video: videoId },
+				url: '/api/v2/transcripts/video',
+				body: { video },
 				json: true,
 			},
 		)) as TranscriptResponse;
@@ -238,11 +258,18 @@ async function fetchTranscript(this: IPollFunctions, videoId: string): Promise<I
 			};
 		}
 
+		// A v2 200 carries segments (the default) or a joined text, never both;
+		// the trigger has always emitted both, so the text is joined here.
+		const segments = res?.data?.segments ?? null;
+		const text =
+			res?.data?.text ??
+			(segments ? segments.map((s) => (s.text ?? '').trim()).filter(Boolean).join(' ') : null);
 		return {
 			transcriptStatus: 'ok',
 			title: res?.data?.title ?? null,
-			text: res?.data?.text ?? null,
-			segments: res?.data?.segments ?? null,
+			source: res?.data?.source ?? null,
+			text,
+			segments,
 		};
 	} catch (error) {
 		return {
