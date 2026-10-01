@@ -174,7 +174,7 @@ export class TranscriptFetch implements INodeType {
 						],
 						default: 'auto',
 						description:
-							'Where the text may come from. Caption fetches cost 1 credit; audio transcription is charged per started minute of audio, on delivery only.',
+							'Where the text may come from. Caption fetches cost 1 credit; audio transcription costs 1 credit per started 5 minutes of audio, on delivery only.',
 					},
 					{
 						displayName: 'Timestamps',

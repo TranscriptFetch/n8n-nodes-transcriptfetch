@@ -69,8 +69,10 @@ export class TranscriptFetchTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{ "New video: " + $parameter["channel"] }}',
+		// n8n's nodes panel merges this trigger with the TranscriptFetch node into
+		// one entry and shows THIS description for it, so it describes the package.
 		description:
-			'Starts a workflow when a YouTube channel, TikTok profile or Instagram account publishes a new video',
+			'Transcripts of any YouTube, TikTok or Instagram video, plus video search, channel and playlist listings, and a trigger for new uploads',
 		defaults: {
 			name: 'TranscriptFetch Trigger',
 		},
@@ -103,7 +105,7 @@ export class TranscriptFetchTrigger implements INodeType {
 				type: 'boolean',
 				default: true,
 				description:
-					'Whether to fetch the transcript for each new video and attach it to the output. A caption transcript costs 1 credit; audio transcription is charged per started minute on delivery. Watching the channel is free.',
+					'Whether to fetch the transcript for each new video and attach it to the output. A caption transcript costs 1 credit; audio transcription costs 1 credit per started 5 minutes, charged on delivery. Watching the channel is free.',
 			},
 			{
 				// Deliberately NOT named `limit`: the community-package linter requires
