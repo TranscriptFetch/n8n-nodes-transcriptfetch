@@ -21,23 +21,28 @@ Billing is per-credit: a successful caption fetch costs 1 credit, failed or bloc
 **TranscriptFetch Trigger** starts a workflow when a YouTube channel, TikTok profile or Instagram account publishes a new video, and hands you the transcript in the same step, so you don't need an RSS Feed Trigger plus a separate transcript call.
 
 - **Channel** - a YouTube `@handle`, `/channel/UC…` URL or `UC…` ID, a TikTok `@profile`, or an Instagram account URL to watch.
-- **Include Transcript** - fetch each new video's transcript and attach it (on by default).
-- **Max Videos Per Poll** - how far back each poll looks. Raise it for channels that publish several videos between polls.
+- **Check Every** - how often TranscriptFetch checks the channel: once a day on any plan, or every 6 hours, hour or 15 minutes on a paid plan.
+- **Include Transcript** - attach each new video's transcript (on by default).
+- **YouTube Tab** - watch a YouTube channel's videos, Shorts or live streams.
 
-**Watching a channel is free.** Each poll sends the newest video ID it has already seen, and a poll that finds nothing new costs no credits — so you're only charged when a video actually appears (1 credit for its transcript). n8n also doesn't count a quiet poll as an execution, so a watched channel doesn't burn your workflow quota either.
+Since 0.5.0 the trigger runs on a [TranscriptFetch monitor](https://transcriptfetch.com/docs/monitors): activating the workflow creates a monitor that checks the channel on TranscriptFetch's schedule and POSTs each new video to the workflow's webhook URL, signed with the monitor's secret (the trigger rejects anything unsigned). Deactivating the workflow deletes the monitor. Changing the node's settings replaces the monitor on the next activation.
 
-When the workflow is first activated the trigger records where the channel stands and emits nothing, so turning it on doesn't replay the entire back catalogue. That one baseline poll costs 1 credit; every quiet poll after it is free. New videos are emitted oldest-first.
+**Billing.** Every check costs 1 credit, whether or not it finds a new video, and so does the first check when the workflow is activated, which records what is already on the channel so the back catalogue is not replayed. A daily check uses about 30 credits a month. A caption transcript costs 1 credit; a video without captions is transcribed from its audio at 1 credit per started 5 minutes. Brand-new YouTube uploads usually get captions a little after they go live, so the monitor waits for them before falling back to audio.
 
-**Test step** returns the channel's latest video so you have real data to build downstream nodes against, without waiting for an upload. It leaves the watermark alone, so activating the workflow afterwards still starts clean.
+**The webhook URL must be public HTTPS.** n8n Cloud always is. A self-hosted instance needs `WEBHOOK_URL` set to a public `https://` address (a reverse proxy or a tunnel); otherwise activation fails with a message saying so. Without a public URL, run the TranscriptFetch node's **List Channel Videos** on a Schedule Trigger instead.
 
-Each item carries the video metadata (`videoId`, `platform`, `url`, `title`, `channel`, `duration`, `publishedAt`, `thumbnailUrl`) plus a `transcriptStatus`:
+Each item carries an `event` field and the video metadata (`videoId`, `url`, `title`, `channel`, `duration`, `publishedAt`, `platform`, `eventId`, `monitorId`, `creditsSpent`), plus a `transcriptStatus`:
 
 | `transcriptStatus` | Meaning |
 | --- | --- |
 | `ok` | `text` and `segments` are populated; `source` says whether they came from `captions` or `audio` |
-| `processing` | No captions existed and the audio transcription is still running; poll `pollUrl` for the result |
-| `unavailable` | The transcript couldn't be fetched; see `reason` |
+| `processing` | The transcript is still coming (captions not out yet, or audio transcription running). It arrives later as its own item with `event: "transcript"` and the same `videoId` |
+| `unavailable` | The transcript couldn't be fetched; see `reason` and `message` |
 | `skipped` | **Include Transcript** was off |
+
+Items with `event: "video"` are new uploads, oldest first. Items with `event: "transcript"` are transcripts that finished after their video was reported.
+
+Upgrading from 0.4.x: the trigger is now version 2. Re-add it to existing workflows; the old polling version is gone.
 
 ## Operations
 

@@ -272,7 +272,7 @@ export class TranscriptFetch implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Newest video ID you have already seen. The response is trimmed to videos newer than it, and a page with nothing newer costs no credits.',
+							'Newest video ID you have already seen. The response is trimmed to videos newer than it. Each such poll costs 1 credit, whether or not it finds new videos.',
 					},
 				],
 			},

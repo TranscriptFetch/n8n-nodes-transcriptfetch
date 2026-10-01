@@ -1,65 +1,50 @@
+import { createHmac, timingSafeEqual } from 'crypto';
 import type {
 	IDataObject,
+	IHookFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IPollFunctions,
+	IWebhookFunctions,
+	IWebhookResponseData,
+	JsonObject,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 const BASE_URL = 'https://transcriptfetch.com';
 
-/**
- * How many recent video IDs to remember. The API returns an untrimmed page when
- * the watermark video has been deleted or made private, so this list is what
- * stops an already-emitted upload from firing a second time.
- */
-const SEEN_LIMIT = 50;
+type ApiResponse = { statusCode: number; body: IDataObject };
 
-type VideoListItem = {
-	videoId?: string;
-	url?: string;
-	title?: string;
-	thumbnailUrl?: string;
-	duration?: number | null;
-	channel?: string | null;
-	publishedAt?: string | null;
-};
-
-type ChannelResponse = {
-	data?: { platform?: string; videos?: VideoListItem[] };
-};
-
-type Segment = { start?: number; duration?: number; text?: string };
-
-type TranscriptResponse = {
-	status?: string;
-	job_id?: string;
-	poll_url?: string;
-	reason?: string;
-	data?: {
-		title?: string | null;
-		platform?: string | null;
-		source?: string | null;
-		text?: string | null;
-		segments?: Segment[] | null;
+type MonitorEvent = {
+	id?: string;
+	type?: string;
+	created_at?: string;
+	monitor?: { id?: string; platform?: string; target?: string };
+	credits_spent?: number;
+	data?: IDataObject & {
+		videos?: IDataObject[];
+		transcripts?: IDataObject[];
 	};
 };
 
 /**
- * Polling trigger for new uploads on a YouTube channel, TikTok profile or
- * Instagram account.
+ * Starts a workflow when a YouTube channel, TikTok profile or Instagram
+ * account publishes a new video.
  *
- * n8n has no native YouTube trigger, so the usual workaround is an RSS Feed
- * Trigger plus a separate transcript service. This collapses both into one node:
- * it watches the channel and (by default) emits each new video with its
- * transcript already attached. Since 0.4.0 it talks to the v2 API, so the same
- * node watches TikTok and Instagram profiles too.
+ * Since 0.5.0 this is a webhook trigger on a TranscriptFetch monitor. Until
+ * 0.4.x it polled the channel endpoint from inside n8n, on n8n's schedule
+ * (every minute by default). Every check for new uploads now costs 1 credit
+ * whether or not it finds one, so the schedule has to be ours: activating the
+ * workflow creates a monitor that checks at the chosen interval and POSTs each
+ * find to this workflow's webhook URL, signed with the monitor's secret, and
+ * deactivating it deletes the monitor. The monitor also waits out the caption
+ * grace period for brand-new YouTube uploads before falling back to audio
+ * transcription, which the poller could not do.
  *
- * Polling is free. The channel endpoint accepts a `since_video_id` watermark,
- * trims the page to whatever is newer, and charges nothing when there is nothing
- * new — so a quiet channel costs no credits to watch, and n8n only counts an
- * execution when `poll` actually returns data.
+ * The webhook URL must be public HTTPS (TranscriptFetch refuses private and
+ * plain-HTTP addresses), which n8n Cloud always is and a self-hosted instance
+ * is once WEBHOOK_URL points at a public address.
  */
 export class TranscriptFetchTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -67,7 +52,7 @@ export class TranscriptFetchTrigger implements INodeType {
 		name: 'transcriptFetchTrigger',
 		icon: { light: 'file:transcriptfetch.svg', dark: 'file:transcriptfetch.dark.svg' },
 		group: ['trigger'],
-		version: 1,
+		version: 2,
 		subtitle: '={{ "New video: " + $parameter["channel"] }}',
 		// n8n's nodes panel merges this trigger with the TranscriptFetch node into
 		// one entry and shows THIS description for it, so it describes the package.
@@ -77,9 +62,7 @@ export class TranscriptFetchTrigger implements INodeType {
 			name: 'TranscriptFetch Trigger',
 		},
 		// No usableAsTool here: n8n's scanner (the verification check) rejects it
-		// on triggers, which cannot be invoked as AI tools. The older local lint
-		// rule that asked for it is superseded.
-		polling: true,
+		// on triggers, which cannot be invoked as AI tools.
 		inputs: [],
 		outputs: ['main'] as NodeConnectionType[],
 		credentials: [
@@ -88,7 +71,22 @@ export class TranscriptFetchTrigger implements INodeType {
 				required: true,
 			},
 		],
+		webhooks: [
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+				path: 'webhook',
+			},
+		],
 		properties: [
+			{
+				displayName:
+					'Each check for new videos costs 1 credit, whether or not it finds one, and so does the first check when the workflow is activated. A daily check uses about 30 credits a month.',
+				name: 'billingNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Channel',
 				name: 'channel',
@@ -100,185 +98,263 @@ export class TranscriptFetchTrigger implements INodeType {
 					'YouTube channel @handle, /channel/UC… URL or UC… ID, a TikTok @profile or profile URL, or an Instagram account URL to watch for new uploads',
 			},
 			{
+				displayName: 'Check Every',
+				name: 'interval',
+				type: 'options',
+				options: [
+					{ name: 'Day', value: 1440 },
+					{ name: '6 Hours (Paid Plans)', value: 360 },
+					{ name: 'Hour (Paid Plans)', value: 60 },
+					{ name: '15 Minutes (Paid Plans)', value: 15 },
+				],
+				default: 1440,
+				description:
+					'How often TranscriptFetch checks the channel. Each check costs 1 credit. Accounts without a paid plan can check once a day.',
+			},
+			{
 				displayName: 'Include Transcript',
 				name: 'includeTranscript',
 				type: 'boolean',
 				default: true,
 				description:
-					'Whether to fetch the transcript for each new video and attach it to the output. A caption transcript costs 1 credit; audio transcription costs 1 credit per started 5 minutes, charged on delivery. Watching the channel is free.',
+					'Whether to attach each new video\'s transcript. A caption transcript costs 1 credit; a video without captions is transcribed from its audio at 1 credit per started 5 minutes and arrives as its own item once it is ready.',
 			},
 			{
-				// Deliberately NOT named `limit`: the community-package linter requires
-				// any parameter called `limit` to default to 50, which would make every
-				// poll ask for 50 videos. The request body still sends `limit`.
-				displayName: 'Max Videos Per Poll',
-				name: 'maxVideos',
-				type: 'number',
-				typeOptions: { minValue: 1, maxValue: 50 },
-				default: 10,
+				displayName: 'YouTube Tab',
+				name: 'tab',
+				type: 'options',
+				options: [
+					{ name: 'Videos', value: 'videos' },
+					{ name: 'Shorts', value: 'shorts' },
+					{ name: 'Live', value: 'live' },
+				],
+				default: 'videos',
 				description:
-					'How far back each poll looks. Raise it for channels that publish several videos between polls.',
+					'Which uploads of a YouTube channel to watch. Ignored for TikTok and Instagram.',
 			},
 		],
 	};
 
-	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const channel = this.getNodeParameter('channel') as string;
-		const maxVideos = this.getNodeParameter('maxVideos') as number;
-		const includeTranscript = this.getNodeParameter('includeTranscript') as boolean;
+	webhookMethods = {
+		default: {
+			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const staticData = this.getWorkflowStaticData('node');
+				const monitorId = staticData.monitorId as string | undefined;
+				if (!monitorId) return false;
 
-		// "Test step" in the editor. Following the watermark here would be
-		// correct but useless: the first test would report the cold start and
-		// every later one would find nothing new, so the editor would only ever
-		// show "no data" and you'd have nothing to build downstream nodes against.
-		const isTestRun = this.getMode() === 'manual';
+				const res = await api.call(this, 'GET', `/api/v2/monitors/${monitorId}`);
+				if (res.statusCode === 404) {
+					// Deleted on the TranscriptFetch side: create a new one.
+					delete staticData.monitorId;
+					delete staticData.webhookSecret;
+					return false;
+				}
+				if (res.statusCode !== 200) throw apiError(this, res);
 
-		const staticData = this.getWorkflowStaticData('node');
-		const lastVideoId = staticData.lastVideoId as string | undefined;
-		const seen = (staticData.seenVideoIds as string[] | undefined) ?? [];
+				const monitor = (res.body.data ?? {}) as IDataObject;
+				if (sameSettings.call(this, monitor)) return true;
 
-		// A test only needs one sample; a real poll needs the whole window.
-		const body: IDataObject = { channel, limit: isTestRun ? 1 : maxVideos };
-		if (lastVideoId && !isTestRun) body.since_video_id = lastVideoId;
-
-		const listed = (await this.helpers.httpRequestWithAuthentication.call(
-			this,
-			'transcriptFetchApi',
-			{
-				method: 'POST',
-				baseURL: BASE_URL,
-				url: '/api/v2/transcripts/channel',
-				body,
-				json: true,
+				// The node's settings changed since activation (or the URL moved):
+				// the old monitor is removed and create() starts a new one.
+				const removed = await api.call(this, 'DELETE', `/api/v2/monitors/${monitorId}`);
+				if (removed.statusCode !== 200 && removed.statusCode !== 404) throw apiError(this, removed);
+				delete staticData.monitorId;
+				delete staticData.webhookSecret;
+				return false;
 			},
-		)) as ChannelResponse;
 
-		const platform = listed?.data?.platform ?? 'youtube';
-		const videos = (listed?.data?.videos ?? []).filter(
-			(v): v is VideoListItem & { videoId: string } => typeof v.videoId === 'string',
-		);
+			async create(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
+				const body: IDataObject = {
+					type: 'channel',
+					target: (this.getNodeParameter('channel') as string).trim(),
+					webhook_url: webhookUrl,
+					interval_minutes: this.getNodeParameter('interval') as number,
+					transcripts: this.getNodeParameter('includeTranscript') as boolean,
+					name: `n8n: ${this.getWorkflow().name ?? 'workflow'}`.slice(0, 100),
+				};
+				const tab = this.getNodeParameter('tab') as string;
+				if (tab !== 'videos') body.tab = tab;
 
-		// Emit the newest upload as a sample. The watermark is deliberately left
-		// untouched, so activating the workflow afterwards still starts clean
-		// rather than treating this video as already delivered.
-		if (isTestRun) {
-			if (videos.length === 0) return null;
-			return [[await buildItem.call(this, videos[0], platform, includeTranscript)]];
+				const res = await api.call(this, 'POST', '/api/v2/monitors', body);
+				if (res.statusCode !== 201) {
+					const issues = ((res.body.error as IDataObject | undefined)?.issues ?? []) as IDataObject[];
+					if (issues.some((issue) => (issue.path as string[] | undefined)?.[0] === 'webhook_url')) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`TranscriptFetch can only deliver to a public HTTPS URL, and this workflow's webhook URL is ${webhookUrl}`,
+							{
+								description:
+									'Use n8n Cloud, or set WEBHOOK_URL on your n8n instance to a public https:// address (a reverse proxy or tunnel). To fetch transcripts without a public URL, use the TranscriptFetch node on a Schedule Trigger.',
+							},
+						);
+					}
+					throw apiError(this, res);
+				}
+
+				const monitor = (res.body.data ?? {}) as IDataObject;
+				const staticData = this.getWorkflowStaticData('node');
+				staticData.monitorId = monitor.id;
+				staticData.webhookSecret = monitor.webhook_secret;
+				return true;
+			},
+
+			async delete(this: IHookFunctions): Promise<boolean> {
+				const staticData = this.getWorkflowStaticData('node');
+				const monitorId = staticData.monitorId as string | undefined;
+				if (monitorId) {
+					const res = await api.call(this, 'DELETE', `/api/v2/monitors/${monitorId}`);
+					// 404: already gone, which is what delete wanted.
+					if (res.statusCode !== 200 && res.statusCode !== 404) throw apiError(this, res);
+				}
+				delete staticData.monitorId;
+				delete staticData.webhookSecret;
+				return true;
+			},
+		},
+	};
+
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const secret = this.getWorkflowStaticData('node').webhookSecret as string | undefined;
+		const signature = this.getHeaderData()['x-transcriptfetch-signature'];
+		const req = this.getRequestObject() as unknown as { rawBody?: Buffer };
+		// The signature covers the exact bytes TranscriptFetch sent.
+		const raw = req.rawBody ?? Buffer.from(JSON.stringify(this.getBodyData()));
+		if (!secret || typeof signature !== 'string' || !signatureMatches(raw, secret, signature)) {
+			this.getResponseObject().status(401).send('Invalid signature');
+			return { noWebhookResponse: true };
 		}
 
-		// First activation: record where the channel stands today and emit nothing,
-		// so switching the workflow on doesn't replay the entire back catalogue.
-		if (!lastVideoId) {
-			if (videos.length > 0) {
-				staticData.lastVideoId = videos[0].videoId;
-				staticData.seenVideoIds = videos.slice(0, SEEN_LIMIT).map((v) => v.videoId);
-			}
-			return null;
-		}
-
-		const fresh = videos.filter((v) => !seen.includes(v.videoId));
-		// Returning null (not an empty array) is what keeps a quiet poll from
-		// counting as an execution — and from being logged as a failed one.
-		if (fresh.length === 0) return null;
-
-		// The API lists newest first; remember that before flipping the order.
-		const newestId = fresh[0].videoId;
-
-		const items: INodeExecutionData[] = [];
-		// Oldest first, so downstream nodes see uploads in the order they happened.
-		for (const video of [...fresh].reverse()) {
-			items.push(await buildItem.call(this, video, platform, includeTranscript));
-		}
-
-		staticData.lastVideoId = newestId;
-		staticData.seenVideoIds = [...fresh.map((v) => v.videoId), ...seen].slice(0, SEEN_LIMIT);
-
-		return [items];
+		const event = this.getBodyData() as MonitorEvent;
+		const items = eventItems(event);
+		// An event with nothing to emit (an unknown type) is still acknowledged,
+		// so TranscriptFetch does not retry it.
+		if (items.length === 0) return { webhookResponse: 'ok' };
+		return { workflowData: [items] };
 	}
 }
 
-/** Shape one listed video into an output item, with its transcript if asked for. */
-async function buildItem(
-	this: IPollFunctions,
-	video: VideoListItem & { videoId: string },
-	platform: string,
-	includeTranscript: boolean,
-): Promise<INodeExecutionData> {
-	// v2 listings carry the platform's own URL. Only a YouTube ID can be turned
-	// into a URL by hand; 0.3.x did that for every platform and emitted
-	// youtube.com links for TikTok videos.
-	const url =
-		video.url ?? (platform === 'youtube' ? `https://www.youtube.com/watch?v=${video.videoId}` : null);
-	const json: IDataObject = {
-		videoId: video.videoId,
-		platform,
-		title: video.title ?? null,
+/** One authenticated call; HTTP errors come back as a status, not a throw. */
+async function api(
+	this: IHookFunctions,
+	method: 'GET' | 'POST' | 'DELETE',
+	url: string,
+	body?: IDataObject,
+): Promise<ApiResponse> {
+	const res = (await this.helpers.httpRequestWithAuthentication.call(this, 'transcriptFetchApi', {
+		method,
+		baseURL: BASE_URL,
 		url,
-		thumbnailUrl: video.thumbnailUrl ?? null,
-		duration: video.duration ?? null,
-		channel: video.channel ?? null,
-		publishedAt: video.publishedAt ?? null,
-		transcriptStatus: 'skipped',
-		text: null,
-		segments: null,
-	};
+		body,
+		json: true,
+		headers: { Accept: 'application/json' },
+		returnFullResponse: true,
+		ignoreHttpStatusErrors: true,
+	})) as { statusCode: number; body: unknown };
+	const parsed = typeof res.body === 'object' && res.body !== null ? (res.body as IDataObject) : {};
+	return { statusCode: res.statusCode, body: parsed };
+}
 
-	if (includeTranscript) {
-		Object.assign(json, await fetchTranscript.call(this, url ?? video.videoId));
-	}
+/** The API's own error block, as an n8n error that names the code. */
+function apiError(ctx: IHookFunctions, res: ApiResponse): NodeApiError {
+	const error = (res.body.error ?? {}) as IDataObject;
+	return new NodeApiError(ctx.getNode(), res.body as JsonObject, {
+		httpCode: String(res.statusCode),
+		message: typeof error.message === 'string' ? error.message : `TranscriptFetch answered HTTP ${res.statusCode}`,
+		description: typeof error.code === 'string' ? `Error code: ${error.code}` : undefined,
+	});
+}
 
-	return { json };
+/** Whether the existing monitor still matches the node and this webhook URL. */
+function sameSettings(this: IHookFunctions, monitor: IDataObject): boolean {
+	const options = (monitor.options ?? {}) as IDataObject;
+	const tab = this.getNodeParameter('tab') as string;
+	return (
+		monitor.webhook_url === this.getNodeWebhookUrl('default') &&
+		monitor.target === (this.getNodeParameter('channel') as string).trim() &&
+		monitor.interval_minutes === this.getNodeParameter('interval') &&
+		monitor.transcripts === this.getNodeParameter('includeTranscript') &&
+		(monitor.platform !== 'youtube' || (options.tab ?? 'videos') === tab)
+	);
+}
+
+function signatureMatches(raw: Buffer, secret: string, header: string): boolean {
+	const expected = Buffer.from(`sha256=${createHmac('sha256', secret).update(raw).digest('hex')}`);
+	const given = Buffer.from(header);
+	return expected.length === given.length && timingSafeEqual(expected, given);
 }
 
 /**
- * Fetch one transcript, flattened into the fields the trigger emits.
- *
- * Never throws: a single unavailable or errored video shouldn't lose the rest of
- * the batch (or silently drop the watermark advance), so failures come back as a
- * `transcriptStatus` the workflow can branch on.
+ * One item per video. A `monitor.videos` event carries the new videos and,
+ * with transcripts on, an entry per video; a `monitor.transcript` event
+ * carries one transcript that finished later (audio transcription, or
+ * captions that appeared during the grace period) for a video an earlier
+ * item reported as `processing`.
  */
-async function fetchTranscript(this: IPollFunctions, video: string): Promise<IDataObject> {
-	try {
-		const res = (await this.helpers.httpRequestWithAuthentication.call(
-			this,
-			'transcriptFetchApi',
-			{
-				method: 'POST',
-				baseURL: BASE_URL,
-				url: '/api/v2/transcripts/video',
-				body: { video },
-				json: true,
-			},
-		)) as TranscriptResponse;
-
-		// No captions: the API queued an audio transcription instead of answering
-		// inline. Hand back the job so the workflow can poll it when it's ready
-		// rather than blocking the trigger for the length of the video.
-		if (res?.status === 'processing' || res?.job_id) {
-			return {
-				transcriptStatus: 'processing',
-				jobId: res.job_id ?? null,
-				pollUrl: res.poll_url ? `${BASE_URL}${res.poll_url}` : null,
-			};
+function eventItems(event: MonitorEvent): INodeExecutionData[] {
+	const meta = {
+		eventId: event.id ?? null,
+		monitorId: event.monitor?.id ?? null,
+		platform: event.monitor?.platform ?? null,
+		creditsSpent: event.credits_spent ?? 0,
+	};
+	if (event.type === 'monitor.videos') {
+		const transcripts = event.data?.transcripts;
+		const byVideo = new Map<string, IDataObject>();
+		for (const entry of transcripts ?? []) {
+			if (typeof entry.video_id === 'string') byVideo.set(entry.video_id, entry);
 		}
+		// The API lists newest first; emit oldest first, the order they happened.
+		return [...(event.data?.videos ?? [])].reverse().map((video) => ({
+			json: {
+				event: 'video',
+				...meta,
+				...video,
+				...transcriptFields(transcripts ? byVideo.get(String(video.videoId)) : undefined),
+			},
+		}));
+	}
+	if (event.type === 'monitor.transcript' && event.data) {
+		return [
+			{
+				json: {
+					event: 'transcript',
+					...meta,
+					videoId: event.data.video_id ?? null,
+					url: event.data.url ?? null,
+					videosEventId: event.data.videos_event_id ?? null,
+					...transcriptFields(event.data),
+				},
+			},
+		];
+	}
+	return [];
+}
 
-		// A v2 200 carries segments (the default) or a joined text, never both;
-		// the trigger has always emitted both, so the text is joined here.
-		const segments = res?.data?.segments ?? null;
-		const text =
-			res?.data?.text ??
-			(segments ? segments.map((s) => (s.text ?? '').trim()).filter(Boolean).join(' ') : null);
-		return {
-			transcriptStatus: 'ok',
-			title: res?.data?.title ?? null,
-			source: res?.data?.source ?? null,
-			text,
-			segments,
-		};
-	} catch (error) {
-		return {
-			transcriptStatus: 'unavailable',
-			reason: error instanceof Error ? error.message : String(error),
-		};
+/** A transcript entry flattened into the fields every item carries. */
+function transcriptFields(entry: IDataObject | undefined): IDataObject {
+	if (!entry) return { transcriptStatus: 'skipped', text: null, segments: null };
+	const transcript = (entry.transcript ?? {}) as IDataObject;
+	const error = (entry.error ?? {}) as IDataObject;
+	switch (entry.outcome) {
+		case 'ok':
+			return {
+				transcriptStatus: 'ok',
+				text: transcript.text ?? null,
+				segments: transcript.segments ?? null,
+				language: transcript.language ?? null,
+				source: transcript.source ?? null,
+			};
+		case 'processing':
+			// Delivered later as its own `transcript` item.
+			return { transcriptStatus: 'processing', text: null, segments: null };
+		default:
+			return {
+				transcriptStatus: 'unavailable',
+				text: null,
+				segments: null,
+				reason: error.code ?? null,
+				message: error.message ?? null,
+			};
 	}
 }
