@@ -12,6 +12,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { CLIENT_HEADERS } from './client';
+
 const BASE_URL = 'https://transcriptfetch.com';
 
 type ApiResponse = { statusCode: number; body: IDataObject };
@@ -249,7 +251,7 @@ async function api(
 		url,
 		body,
 		json: true,
-		headers: { Accept: 'application/json' },
+		headers: { Accept: 'application/json', ...CLIENT_HEADERS },
 		returnFullResponse: true,
 		ignoreHttpStatusErrors: true,
 	})) as { statusCode: number; body: unknown };

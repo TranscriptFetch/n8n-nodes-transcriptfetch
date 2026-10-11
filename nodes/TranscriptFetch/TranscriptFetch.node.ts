@@ -8,6 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
+import { CLIENT_HEADERS } from './client';
+
 const BASE_URL = 'https://transcriptfetch.com';
 
 /** Poll cadence for audio-transcription jobs (the API is free to poll). */
@@ -477,7 +479,7 @@ async function request(
 			url,
 			body,
 			json: true,
-			headers: { Accept: 'application/json' },
+			headers: { Accept: 'application/json', ...CLIENT_HEADERS },
 		})) as IDataObject;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as never);
