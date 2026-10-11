@@ -1,8 +1,10 @@
 # n8n-nodes-transcriptfetch
 
-This is an n8n community node for [TranscriptFetch](https://transcriptfetch.com) - the video transcript API for AI.
+This is an n8n community node for [TranscriptFetch](https://transcriptfetch.com?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme) - the video transcript API for AI.
 
-**Setup guide and ready-to-import workflows: [transcriptfetch.com/docs/n8n](https://transcriptfetch.com/docs/n8n?utm_source=n8n&utm_medium=referral&utm_campaign=n8n-readme)**
+**Setup guide and ready-to-import workflows: [transcriptfetch.com/docs/n8n](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme)**
+
+Quick links: [install](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#install) · [add your API key](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#key) · [first workflow](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#run) · [templates](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#templates) · [AI agents](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#agents) · [troubleshooting](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#troubleshooting)
 
 Fetch transcripts from **YouTube, TikTok & Instagram** - with automatic AI transcription when captions don't exist - directly inside your n8n workflows. Structured JSON output with per-segment timestamps, built for RAG, agents, and LLM pipelines.
 
@@ -10,30 +12,32 @@ Fetch transcripts from **YouTube, TikTok & Instagram** - with automatic AI trans
 
 ## Installation
 
-In n8n, open the nodes panel, search for **TranscriptFetch** and click **Install node** (it is a verified community node). On a self-hosted instance you can also install it under **Settings > Community nodes** with the package name `n8n-nodes-transcriptfetch`. Step by step: [install the node](https://transcriptfetch.com/docs/n8n?utm_source=n8n&utm_medium=referral&utm_campaign=n8n-readme#install).
+Follow the [installation guide](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#install) in the TranscriptFetch n8n docs.
+
+In short: in n8n, open the nodes panel, search for **TranscriptFetch** and click **Install node** (it is a verified community node). On a self-hosted instance you can also install it under **Settings > Community nodes** with the package name `n8n-nodes-transcriptfetch`. Then [add your API key](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#key) and [run your first workflow](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#run).
 
 ## Credentials
 
-Sign up at [transcriptfetch.com](https://transcriptfetch.com) and create an API key in the [dashboard](https://transcriptfetch.com/app). Add it as a **TranscriptFetch API** credential in n8n ([how](https://transcriptfetch.com/docs/n8n?utm_source=n8n&utm_medium=referral&utm_campaign=n8n-readme#key)).
+Sign up at [transcriptfetch.com](https://transcriptfetch.com?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme) and create an API key in the [dashboard](https://transcriptfetch.com/sign-up?next=%2Fapp&utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme). Add it as a **TranscriptFetch API** credential in n8n: [step by step](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#key).
 
-Billing is per-credit: a successful caption fetch costs 1 credit, failed or blocked fetches are never charged, and every account gets 50 free credits a month. Videos without captions are transcribed from audio automatically (short videos typically finish in about 30 seconds) and are billed once, on delivery of the finished transcript, at the audio-transcription rate (see [pricing](https://transcriptfetch.com/pricing)).
+Billing is per-credit: a successful caption fetch costs 1 credit, failed or blocked fetches are never charged, and every account gets 50 free credits a month. Videos without captions are transcribed from audio automatically (short videos typically finish in about 30 seconds) and are billed once, on delivery of the finished transcript, at the audio-transcription rate (see [billing in n8n](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#billing) and [pricing](https://transcriptfetch.com/pricing?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme)).
 
 ## Trigger
 
-**TranscriptFetch Trigger** starts a workflow when a YouTube channel, TikTok profile or Instagram account publishes a new video, and hands you the transcript in the same step, so you don't need an RSS Feed Trigger plus a separate transcript call.
+**TranscriptFetch Trigger** starts a workflow when a YouTube channel, TikTok profile or Instagram account publishes a new video, and hands you the transcript in the same step, so you don't need an RSS Feed Trigger plus a separate transcript call. Setup and examples: [trigger guide](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#trigger).
 
 - **Channel** - a YouTube `@handle`, `/channel/UC…` URL or `UC…` ID, a TikTok `@profile`, or an Instagram account URL to watch.
 - **Check Every** - how often TranscriptFetch checks the channel: once a day on any plan, or every 6 hours, hour or 15 minutes on a paid plan.
 - **Include Transcript** - attach each new video's transcript (on by default).
 - **YouTube Tab** - watch a YouTube channel's videos, Shorts or live streams.
 
-Since 0.5.0 the trigger runs on a [TranscriptFetch monitor](https://transcriptfetch.com/docs/monitors): activating the workflow creates a monitor that checks the channel on TranscriptFetch's schedule and POSTs each new video to the workflow's webhook URL, signed with the monitor's secret (the trigger rejects anything unsigned). Deactivating the workflow deletes the monitor. Changing the node's settings replaces the monitor on the next activation.
+Since 0.5.0 the trigger runs on a [TranscriptFetch monitor](https://transcriptfetch.com/docs/monitors?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme): activating the workflow creates a monitor that checks the channel on TranscriptFetch's schedule and POSTs each new video to the workflow's webhook URL, signed with the monitor's secret (the trigger rejects anything unsigned). Deactivating the workflow deletes the monitor. Changing the node's settings replaces the monitor on the next activation.
 
 **Billing.** Every check costs 1 credit, whether or not it finds a new video, and so does the first check when the workflow is activated, which records what is already on the channel so the back catalogue is not replayed. A daily check uses about 30 credits a month. A caption transcript costs 1 credit; a video without captions is transcribed from its audio at 1 credit per started 5 minutes. Brand-new YouTube uploads usually get captions a little after they go live, so the monitor waits for them before falling back to audio.
 
 **The webhook URL must be public HTTPS.** n8n Cloud always is. A self-hosted instance needs `WEBHOOK_URL` set to a public `https://` address (a reverse proxy or a tunnel); otherwise activation fails with a message saying so. Without a public URL, run the TranscriptFetch node's **List Channel Videos** on a Schedule Trigger instead.
 
-Each item carries an `event` field and the video metadata (`videoId`, `url`, `title`, `channel`, `duration`, `publishedAt`, `platform`, `eventId`, `monitorId`, `creditsSpent`), plus a `transcriptStatus`:
+Each item carries an `event` field and the video metadata (`videoId`, `url`, `title`, `channel`, `duration`, `publishedAt`, `platform`, `eventId`, `monitorId`, `creditsSpent`), plus a `transcriptStatus` ([what each value means](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#transcript-status)):
 
 | `transcriptStatus` | Meaning |
 | --- | --- |
@@ -48,6 +52,8 @@ Upgrading from 0.4.x: the trigger is now version 2. Re-add it to existing workfl
 
 ## Operations
 
+Every operation with its inputs and outputs: [operations in the n8n guide](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#operations).
+
 ### Transcript
 
 - **Get Video Transcript** - transcript for a YouTube, TikTok or Instagram video, or a direct media file URL. Options: **Mode** (`auto` reads captions and transcribes the audio when there are none; `captions` never transcribes; `audio` always does), **Timestamps** (segments with `start`, `duration`, `text`, or one joined `text`), **Wait for Audio Transcription** (on by default: when the API answers with a job the node polls it, free, and returns the finished transcript; raise **Max Wait** for long videos, or turn it off to get the `job_id` and `poll_url` back immediately), and **Callback URL** (have the finished transcript POSTed to you instead).
@@ -58,12 +64,14 @@ Upgrading from 0.4.x: the trigger is now version 2. Re-add it to existing workfl
 
 All operations call the v2 API and return its envelope: `ok`, `request_id`, `data` and `usage` (credits spent and balance). Transcripts carry `video_id`, `url`, `platform`, `title`, `channel`, `duration`, `language`, `thumbnail_url`, `source` (`captions` or `audio`) and the text.
 
-The node is also marked **usable as a tool**, so n8n AI Agent nodes can call it directly.
+The node is also marked **usable as a tool**, so n8n AI Agent nodes can call it directly: [use it with an AI Agent](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#agents).
 
 ## Resources
 
-- [TranscriptFetch n8n guide and workflow templates](https://transcriptfetch.com/docs/n8n?utm_source=n8n&utm_medium=referral&utm_campaign=n8n-readme#templates)
-- [TranscriptFetch API documentation](https://transcriptfetch.com/docs)
+- [TranscriptFetch n8n guide](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme)
+- [Ready-to-import workflow templates](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#templates)
+- [Troubleshooting](https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme#troubleshooting)
+- [TranscriptFetch API documentation](https://transcriptfetch.com/docs?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme)
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
 
 ## License

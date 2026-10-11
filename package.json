@@ -15,7 +15,7 @@
 		"transcriptfetch"
 	],
 	"license": "MIT",
-	"homepage": "https://transcriptfetch.com/docs/n8n?utm_source=npm&utm_medium=referral&utm_campaign=n8n-package-homepage",
+	"homepage": "https://transcriptfetch.com/docs/n8n?utm_source=npm",
 	"author": {
 		"name": "TranscriptFetch",
 		"email": "support@transcriptfetch.com"
