@@ -13,7 +13,8 @@ export class TranscriptFetchApi implements ICredentialType {
 
 	icon: Icon = { light: 'file:transcriptfetch.svg', dark: 'file:transcriptfetch.dark.svg' };
 
-	documentationUrl = 'https://transcriptfetch.com/docs';
+	documentationUrl =
+		'https://transcriptfetch.com/docs/n8n?utm_source=n8n&utm_medium=referral&utm_campaign=n8n-credential#key';
 
 	properties: INodeProperties[] = [
 		{

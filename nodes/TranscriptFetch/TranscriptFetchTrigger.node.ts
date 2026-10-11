@@ -58,6 +58,8 @@ export class TranscriptFetchTrigger implements INodeType {
 		// one entry and shows THIS description for it, so it describes the package.
 		description:
 			'Transcripts of any YouTube, TikTok or Instagram video, plus video search, channel and playlist listings, and a trigger for new uploads',
+		// The node's Docs link. Without it n8n opens the npm page.
+		documentationUrl: 'https://transcriptfetch.com/docs/n8n?utm_source=n8n&utm_medium=referral&utm_campaign=n8n-trigger-docs#trigger',
 		defaults: {
 			name: 'TranscriptFetch Trigger',
 		},

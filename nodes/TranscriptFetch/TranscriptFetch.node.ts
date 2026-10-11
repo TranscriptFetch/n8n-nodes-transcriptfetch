@@ -43,6 +43,8 @@ export class TranscriptFetch implements INodeType {
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		description:
 			'Video transcripts from YouTube, TikTok and Instagram, with automatic AI transcription when captions are missing',
+		// The node's Docs link. Without it n8n opens the npm page.
+		documentationUrl: 'https://transcriptfetch.com/docs/n8n?utm_source=n8n&utm_medium=referral&utm_campaign=n8n-node-docs',
 		defaults: {
 			name: 'TranscriptFetch',
 		},

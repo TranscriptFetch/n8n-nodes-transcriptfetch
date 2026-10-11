@@ -2,19 +2,21 @@
 
 This is an n8n community node for [TranscriptFetch](https://transcriptfetch.com) - the video transcript API for AI.
 
+**Setup guide and ready-to-import workflows: [transcriptfetch.com/docs/n8n](https://transcriptfetch.com/docs/n8n?utm_source=n8n&utm_medium=referral&utm_campaign=n8n-readme)**
+
 Fetch transcripts from **YouTube, TikTok & Instagram** - with automatic AI transcription when captions don't exist - directly inside your n8n workflows. Structured JSON output with per-segment timestamps, built for RAG, agents, and LLM pipelines.
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
 
 ## Installation
 
-Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation. Search for `n8n-nodes-transcriptfetch`.
+In n8n, open the nodes panel, search for **TranscriptFetch** and click **Install node** (it is a verified community node). On a self-hosted instance you can also install it under **Settings > Community nodes** with the package name `n8n-nodes-transcriptfetch`. Step by step: [install the node](https://transcriptfetch.com/docs/n8n?utm_source=n8n&utm_medium=referral&utm_campaign=n8n-readme#install).
 
 ## Credentials
 
-Sign up at [transcriptfetch.com](https://transcriptfetch.com) and create an API key in the [dashboard](https://transcriptfetch.com/app). Add it as a **TranscriptFetch API** credential in n8n.
+Sign up at [transcriptfetch.com](https://transcriptfetch.com) and create an API key in the [dashboard](https://transcriptfetch.com/app). Add it as a **TranscriptFetch API** credential in n8n ([how](https://transcriptfetch.com/docs/n8n?utm_source=n8n&utm_medium=referral&utm_campaign=n8n-readme#key)).
 
-Billing is per-credit: a successful caption fetch costs 1 credit, failed or blocked fetches are never charged, and every account gets 50 free credits a month. Videos without captions are transcribed from audio automatically — short videos typically finish in about 30 seconds — and are billed once, on delivery of the finished transcript, at the audio-transcription rate (see [pricing](https://transcriptfetch.com/pricing)).
+Billing is per-credit: a successful caption fetch costs 1 credit, failed or blocked fetches are never charged, and every account gets 50 free credits a month. Videos without captions are transcribed from audio automatically (short videos typically finish in about 30 seconds) and are billed once, on delivery of the finished transcript, at the audio-transcription rate (see [pricing](https://transcriptfetch.com/pricing)).
 
 ## Trigger
 
@@ -60,6 +62,7 @@ The node is also marked **usable as a tool**, so n8n AI Agent nodes can call it 
 
 ## Resources
 
+- [TranscriptFetch n8n guide and workflow templates](https://transcriptfetch.com/docs/n8n?utm_source=n8n&utm_medium=referral&utm_campaign=n8n-readme#templates)
 - [TranscriptFetch API documentation](https://transcriptfetch.com/docs)
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
 
