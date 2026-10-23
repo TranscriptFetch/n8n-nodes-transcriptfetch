@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/TranscriptFetch/n8n-nodes-transcriptfetch/main/assets/logo.png" alt="TranscriptFetch" width="84" height="84" />
+</p>
+
 # n8n-nodes-transcriptfetch
 
 This is an n8n community node for [TranscriptFetch](https://transcriptfetch.com?utm_source=npm&utm_medium=referral&utm_campaign=n8n-readme) - the video transcript API for AI.
